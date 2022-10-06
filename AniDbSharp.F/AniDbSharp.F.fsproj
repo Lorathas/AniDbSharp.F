@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="Data\Types.fs" />
+        <Compile Include="Data\Files.fs" />
+        <Compile Include="Data\Masks.fs" />
+        <Compile Include="Extensions\Udp.fs" />
+        <Compile Include="StatusCodes.fs" />
+        <Compile Include="Commands.fs" />
+        <Compile Include="Responses.fs" />
+        <Compile Include="Library.fs" />
+        <Compile Include="IAniDbClient.fs" />
+        <Compile Include="AniDbClient.fs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Polly" Version="7.2.3" />
+    </ItemGroup>
+
+</Project>

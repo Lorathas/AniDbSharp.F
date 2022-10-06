@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<root>
+    <data name="AniDbIllegalInputOrAccessDenied" xml:space="preserve"><value>"Detected Illegal Input or access is denied"</value></data>
+    <data name="AniDbBanned" xml:space="preserve"><value>Client is currently banned, wait for the AniDB API to cooldown before trying again</value></data>
+    <data name="AniDbUnknownCommand" xml:space="preserve"><value>Unknown Command: {0}</value></data>
+    <data name="AniDbInternalServerError" xml:space="preserve"><value>An unknown error with the server has occurred</value></data>
+    <data name="AniDbOutOfService" xml:space="preserve"><value>AniDB is currently experiencing service issues, try again later</value></data>
+    <data name="AniDbServerBusy" xml:space="preserve"><value>AniDB's servers are currently overloaded, try again later</value></data>
+    <data name="AniDbTimeout" xml:space="preserve"><value>Request timed out</value></data>
+</root>
