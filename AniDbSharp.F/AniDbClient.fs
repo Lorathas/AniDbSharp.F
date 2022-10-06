@@ -7,7 +7,6 @@ open AniDbSharp.F.Data.Files
 open AniDbSharp.F.Data.Masks
 open AniDbSharp.F.Responses
 open AniDbSharp.F.StatusCodes
-open Microsoft.FSharp.Reflection
 open AniDbSharp.F.Commands
 open AniDbSharp.F.Extensions.Udp
 open Polly
@@ -198,48 +197,54 @@ module Parsing =
             | _ -> Failure(r.Status, r.Body)
         | r -> AniDbResponse.mapTo r
 
-type AniDbClient(clientName, clientVersion) =
-    member private this.udpClient =
-        new UdpClient(ClientPort)
+type AniDbClient(endpoint, clientPort: int, serverPort, clientName, clientVersion) =
+    let mutable udpClient: UdpClient option = None
 
-    member private this.token = None
+    let mutable token: string option = None
 
     member private this.SendCommandInternal command (filter: AniDbPossiblyHandledResponse -> AniDbPossiblyHandledResponse) parameters =
-        let bytes =
-            System.Text.Encoding.ASCII.GetBytes $"{commandToValue command} {buildParamBody parameters}"
+        if Option.isNone udpClient then
+            udpClient <- Some(new UdpClient(clientPort))
+        match udpClient with
+        | Some udpClient ->
+            let bytes =
+                System.Text.Encoding.ASCII.GetBytes $"{commandToValue command} {buildParamBody parameters}"
 
-        async {
-            if bytes.Length > 1400 then
-                return Validation "Request size greater than 1,400 bytes. Please ensure that you are formatting the request correctly."
-            else
-                do! sendBytes this.udpClient bytes |> Async.Ignore
+            async {
+                if bytes.Length > 1400 then
+                    return Validation "Request size greater than 1,400 bytes. Please ensure that you are formatting the request correctly."
+                else
+                    do! sendBytes udpClient bytes |> Async.Ignore
 
-                let! response = receiveAscii this.udpClient GlobalTimeoutOption
+                    let! response = receiveAscii udpClient GlobalTimeoutOption
 
-                return
-                    match response with
-                    | None -> Critical(AniDbStatusCode.Banned, "Client is currently banned, wait for the AniDB API to cooldown before trying again")
-                    | Some r ->
-                        let parsed =
-                            match Parsing.parseResponse command r with
-                            | Ok d -> Success d
-                            | Error m -> Parsing m
+                    return
+                        match response with
+                        | None -> Critical(AniDbStatusCode.Banned, "Client is currently banned, wait for the AniDB API to cooldown before trying again")
+                        | Some r ->
+                            let parsed =
+                                match Parsing.parseResponse command r with
+                                | Ok d -> Success d
+                                | Error m -> Parsing m
 
-                        match AniDbPossiblyHandledResponse.fromResponse parsed
-                              |> filter
-                            with
-                        | Handled r -> r
-                        | Unhandled r -> Success r
-        }
+                            match AniDbPossiblyHandledResponse.fromResponse parsed
+                                  |> filter
+                                with
+                            | Handled r -> r
+                            | Unhandled r -> Success r
+            }
+        | None -> async {return Critical(AniDbStatusCode.Unknown, "UdpClient is not set")}
 
 
     member this.SendAuthorizedCommand command (parameters: Map<string, AniDbParam>) =
-        let param = Option.get this.token |> String
+        match token with
+        | Some token -> 
+            let param = String token
+            let parameters =
+                Map.add "s" param parameters
 
-        let parameters =
-            Map.add "s" param parameters
-
-        this.SendCommandInternal command authedErrorFilter parameters
+            this.SendCommandInternal command authedErrorFilter parameters
+        | None -> async { return Critical (AniDbStatusCode.LoginFirst, "Client is not logged in") }
 
     member this.SendCommand command parameters =
         this.SendCommandInternal command globalErrorFilter parameters
@@ -332,4 +337,7 @@ type AniDbClient(clientName, clientVersion) =
             }
 
     interface IDisposable with
-        member this.Dispose() = this.udpClient.Dispose()
+        member this.Dispose() =
+            match udpClient with
+            | Some c -> c.Dispose()
+            | None -> ()
